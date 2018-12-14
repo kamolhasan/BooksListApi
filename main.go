@@ -1,13 +1,12 @@
 package main
 
-import (
-	"github.com/kamolhasan/BookListApi/api"
-	"log"
-	"net/http"
-
-)
+import "github.com/kamolhasan/BookListApi/api"
 
 func main()  {
-	log.Fatal(http.ListenAndServe(":8000",api.Router))
+
+
+ 	api.CreateSever()
+
+	api.GracefulShutDown()
 
 }

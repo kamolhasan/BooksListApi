@@ -1,10 +1,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"flag"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
+	"time"
 )
 
 //-----------------create data structure
@@ -24,6 +30,8 @@ type Author struct {
 var booklist = make(map[int]book)
 var users = make(map[string]string)
 var Router = mux.NewRouter()
+var wait time.Duration
+var server *http.Server
 
 //Create demo DB
 func CreateDB() {
@@ -215,6 +223,43 @@ func AuthN(r *http.Request) (string, bool) {
 
 		return "Header format error!\n", false
 	}
+}
+
+func CreateSever() {
+	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
+	flag.Parse()
+
+	server = &http.Server{
+		Addr: ":8000",
+
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      Router, 
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+}
+
+func GracefulShutDown() {
+
+	c := make(chan os.Signal, 1)
+
+	signal.Notify(c, os.Interrupt)
+
+	<-c
+
+	ctx, cancel := context.WithTimeout(context.Background(), wait)
+	defer cancel()
+
+	server.Shutdown(ctx)
+	log.Println("shutting down")
+	os.Exit(0)
 }
 
 func init() {
