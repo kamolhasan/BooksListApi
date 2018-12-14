@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-
 //-----------------create data structure
 type book struct {
 	ID     int     `json:"id"`
@@ -82,20 +81,19 @@ func handleRequest() {
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if value,flag:=AuthN(r);!flag{
+	if value, flag := AuthN(r); !flag {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: "+value))
+		w.Write([]byte("Error: " + value))
 		return
 	}
-
 
 	params := mux.Vars(r)
 
 	v, _ := strconv.Atoi(params["id"])
 	if _, flag := booklist[v]; flag {
 		delete(booklist, v)
-	}else{
-		w.WriteHeader(http.StatusBadRequest)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
 		w.Write([]byte("Error: Doesn't exist!\n"))
 		return
 	}
@@ -107,9 +105,9 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if value,flag:=AuthN(r);!flag{
+	if value, flag := AuthN(r); !flag {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: "+value))
+		w.Write([]byte("Error: " + value))
 		return
 	}
 
@@ -118,8 +116,13 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 
 	var newbook book
 	_ = json.NewDecoder(r.Body).Decode(&newbook)
-	booklist[v] = newbook
 
+	if _, flag := booklist[newbook.ID]; !flag {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	booklist[v] = newbook
 	json.NewEncoder(w).Encode(booklist)
 }
 
@@ -127,15 +130,21 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 func CreateBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if value,flag:=AuthN(r);!flag{
+	if value, flag := AuthN(r); !flag {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: "+value))
+		w.Write([]byte("Error: " + value))
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	var newbook book
 	_ = json.NewDecoder(r.Body).Decode(&newbook)
+
+	if _, flag := booklist[newbook.ID]; flag {
+
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
 	booklist[newbook.ID] = newbook
 }
 
@@ -144,21 +153,21 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if value,flag:=AuthN(r);!flag{
+	if value, flag := AuthN(r); !flag {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: "+value))
+		w.Write([]byte("Error: " + value))
 		return
 	}
-
 
 	params := mux.Vars(r)
 	v, _ := strconv.Atoi(params["id"])
 	if value, flag := booklist[v]; flag {
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(value)
 		return
-	}else {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error: 400 Bad Request\n"))
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Error: 404 Not Found\n"))
 	}
 
 }
@@ -168,9 +177,9 @@ func GetBooks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if value,flag:=AuthN(r);!flag{
+	if value, flag := AuthN(r); !flag {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: "+value))
+		w.Write([]byte("Error: " + value))
 		return
 
 	}
@@ -178,9 +187,6 @@ func GetBooks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(booklist)
 
 }
-
-
-
 
 //Basic authentication function
 func AuthN(r *http.Request) (string, bool) {
@@ -217,4 +223,3 @@ func init() {
 	handleRequest()
 
 }
-
