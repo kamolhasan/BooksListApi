@@ -1,12 +1,7 @@
 package main
 
-import "github.com/kamolhasan/BookListApi/api"
+import "github.com/kamolhasan/BookListApi/cmd"
 
-func main()  {
-
-
- 	api.CreateSever()
-
-	api.GracefulShutDown()
-
+func main() {
+	cmd.Execute()
 }

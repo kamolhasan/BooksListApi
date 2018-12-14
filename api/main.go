@@ -32,6 +32,7 @@ var users = make(map[string]string)
 var Router = mux.NewRouter()
 var wait time.Duration
 var server *http.Server
+var BypassAuth bool
 
 //Create demo DB
 func CreateDB() {
@@ -89,10 +90,12 @@ func handleRequest() {
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if value, flag := AuthN(r); !flag {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: " + value))
-		return
+	if !BypassAuth {
+		if value, flag := AuthN(r); !flag {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Error: " + value))
+			return
+		}
 	}
 
 	params := mux.Vars(r)
@@ -113,10 +116,12 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if value, flag := AuthN(r); !flag {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: " + value))
-		return
+	if !BypassAuth {
+		if value, flag := AuthN(r); !flag {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Error: " + value))
+			return
+		}
 	}
 
 	params := mux.Vars(r)
@@ -138,12 +143,13 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 func CreateBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if value, flag := AuthN(r); !flag {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: " + value))
-		return
+	if !BypassAuth {
+		if value, flag := AuthN(r); !flag {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Error: " + value))
+			return
+		}
 	}
-
 	var newbook book
 	_ = json.NewDecoder(r.Body).Decode(&newbook)
 
@@ -161,10 +167,12 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if value, flag := AuthN(r); !flag {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: " + value))
-		return
+	if !BypassAuth {
+		if value, flag := AuthN(r); !flag {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Error: " + value))
+			return
+		}
 	}
 
 	params := mux.Vars(r)
@@ -185,11 +193,12 @@ func GetBooks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if value, flag := AuthN(r); !flag {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Error: " + value))
-		return
-
+	if !BypassAuth {
+		if value, flag := AuthN(r); !flag {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Error: " + value))
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(booklist)
@@ -226,24 +235,29 @@ func AuthN(r *http.Request) (string, bool) {
 }
 
 func CreateSever() {
+
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 	flag.Parse()
 
 	server = &http.Server{
-		Addr: ":8000",
-
+		Addr:         ":8000",
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      Router, 
+		Handler:      Router,
 	}
+
+}
+func SetValue(P string, B bool) {
+	BypassAuth = B
+	server.Addr = ":" + P
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
 	}()
-
+	GracefulShutDown()
 }
 
 func GracefulShutDown() {
